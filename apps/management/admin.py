@@ -7,6 +7,7 @@ from apps.management.models.order import Order
 from apps.management.models.suplier import Supplier
 from apps.management.models.table import Table
 from apps.management.models.table_service import TableService
+from apps.management.models.dish_ingredient import DishIngredient
 
 
 @admin.register(Restaurant)
@@ -123,6 +124,32 @@ class DishAdmin(admin.ModelAdmin):
         ('Status', {
             'fields': (
                 'is_active',
+            )
+        }),
+        ('Important Dates', {
+            'fields': (
+                'created_at',
+                'updated_at',
+            )
+        }),
+    )
+
+
+@admin.register(DishIngredient)
+class DishIngredientAdmin(admin.ModelAdmin):
+    icon_name = 'restaurant'
+    list_display = ('id', 'dish', 'ingredient', 'quantity')
+    list_filter = ('dish', 'ingredient')
+    search_fields = ('dish__name', 'ingredient__name')
+    ordering = ('id',)
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+    fieldsets = (
+        ('Dish Ingredient Info', {
+            'fields': (
+                'dish',
+                'ingredient',
+                'quantity',
             )
         }),
         ('Important Dates', {

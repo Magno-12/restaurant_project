@@ -26,28 +26,25 @@ class Dish(BaseModel):
     )
     available = models.BooleanField(default=True)
     ingredients = models.ManyToManyField(Inventory, related_name='dishes')
+    estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def calculate_estimated_recipe_cost(self):
         total_cost = Decimal('0.00')
-        for ingredient in self.ingredients.all():
-            estimated_quantity = Decimal('1.00')  # Esto es una estimación, necesitarás ajustar esto según tu lógica de negocio
-            total_cost += estimated_quantity * Decimal(str(ingredient.unit_cost))
+        for dish_ingredient in self.dish_ingredients.all():
+            total_cost += dish_ingredient.quantity * Decimal(str(dish_ingredient.ingredient.unit_cost))
         return total_cost
 
     def save(self, *args, **kwargs):
         self.recipe_cost = self.calculate_estimated_recipe_cost()
+        self.estimated_cost = self.recipe_cost
         tax_multiplier = self.tax_percentage / Decimal('100')
         self.sale_price = self.price + (self.price * tax_multiplier)
-
         if self.profit_margin is None:
             self.profit_margin = Decimal('0.00')
-
         profit_multiplier = self.profit_margin / Decimal('100')
         self.net_sale_price = self.price + (self.price * profit_multiplier)
-
         if self.recipe_cost and self.recipe_cost > 0:
             self.profit_margin = ((self.net_sale_price - self.recipe_cost) / self.recipe_cost) * Decimal('100')
-
         super().save(*args, **kwargs)
 
     def __str__(self):
