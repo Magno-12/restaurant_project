@@ -12,4 +12,4 @@ class DishIngredient(BaseModel):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.dish.name} - {self.ingredient.name}"
+        return f"{self.dish.name}"
