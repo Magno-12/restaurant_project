@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Exit on error
+# exit on error
 set -o errexit
 
-python -m pip install --upgrade pip
-# Modify this line as needed for your package manager (pip, poetry, etc.)
+# Install requirements
 pip install -r requirements.txt
 
-# Convert static asset files
-python manage.py collectstatic --no-input
-
-# create static directory if it doesn't exist
+# Create static directory if it doesn't exist
 mkdir -p static
+mkdir -p staticfiles
 
-# Apply any outstanding database migrations
+# Collect static files
+python manage.py collectstatic --no-input --clear
+
+# Run migrations
 python manage.py migrate
