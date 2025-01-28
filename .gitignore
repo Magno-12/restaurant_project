@@ -3,6 +3,5 @@ reset_migrations.py
 clean_Database.py
 .env
 populate_db.py
-staticfiles/
 *.pyc
 __pycache__/
