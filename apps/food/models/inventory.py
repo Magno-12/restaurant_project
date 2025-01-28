@@ -8,38 +8,20 @@ from apps.food.models.ingredient import Ingredient
 from apps.food.utils import CATEGORY_CHOICES
 
 
-class InventoryIngredient(BaseModel):
-    inventory = models.ForeignKey(
-        'Inventory',
-        on_delete=models.CASCADE,
-        related_name='ingredient_entries'
-    )
-    ingredient = models.ForeignKey(
-        Ingredient,
-        on_delete=models.CASCADE,
-        related_name='inventories'
-    )
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        app_label = 'food'
-
-    def __str__(self):
-        return f"{self.ingredient.name} in {self.inventory.product_name}"
+# apps/food/models/inventory.py
+from django.db import models
+from decimal import Decimal
+from apps.default.models.base_model import BaseModel
+from apps.food.utils import CATEGORY_CHOICES
 
 class Inventory(BaseModel):
-    product_name = models.CharField(max_length=255, unique=True)
-    code = models.CharField(max_length=8, unique=True)
+    product_name = models.CharField(max_length=255)
+    code = models.CharField(max_length=8)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     restaurant = models.ForeignKey(
         'management.Restaurant',
         on_delete=models.CASCADE,
         related_name='inventories'
-    )
-    ingredients = models.ManyToManyField(
-        Ingredient,
-        through=InventoryIngredient,
-        related_name='inventory_entries'
     )
     unit = models.CharField(max_length=50)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
@@ -52,9 +34,10 @@ class Inventory(BaseModel):
     class Meta:
         app_label = 'food'
         verbose_name_plural = 'Inventories'
+        unique_together = ['product_name', 'restaurant', 'code']
 
     def __str__(self):
-        return f'{self.product_name}'
+        return f'{self.product_name} - {self.restaurant.name}'
 
     def save(self, *args, **kwargs):
         if self.quantity is not None and self.unit_cost is not None:

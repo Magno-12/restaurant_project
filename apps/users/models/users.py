@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.core.validators import MinLengthValidator, MaxLengthValidator
 from django.core.exceptions import ValidationError
@@ -9,6 +9,29 @@ from apps.default.models.base_model import BaseModel
 from apps.management.models.restaurant import Restaurant
 
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('El Email es obligatorio')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
+
 class User(AbstractUser, BaseModel):
     # Basic user information
     first_name = models.CharField(max_length=30)
@@ -17,34 +40,28 @@ class User(AbstractUser, BaseModel):
         verbose_name='email address',
         max_length=255,
         unique=True,
-        help_text='This field will be used for login'
+        help_text='Este campo será usado para el login'
     )
-    # Remove username as primary login field
-    username = None
-
+    username = None  # Removemos el campo username
+    
     # Contact information
-    phone_number = PhoneNumberField(default='+57', blank=False, null=False)
-
+    phone_number = PhoneNumberField(default='+1', blank=False, null=False)
+    
     # Restaurant specific fields
-    restaurant = models.ForeignKey(
-        Restaurant,
-        on_delete=models.CASCADE,
-        related_name='users',
-        null=True,
-        blank=True,
-        help_text='Restaurant this user belongs to'
-    )
     restaurant_code = models.CharField(
         max_length=6,
-        validators=[
-            MinLengthValidator(6),
-            MaxLengthValidator(6)
-        ],
         help_text='6-digit code to identify the restaurant',
         null=True,
         blank=True
     )
-
+    restaurant = models.ForeignKey(
+        'management.Restaurant',
+        on_delete=models.CASCADE,
+        related_name='users',
+        null=True,
+        blank=True
+    )
+    
     # Role and permissions
     role = models.CharField(
         choices=ROLE,
@@ -62,8 +79,8 @@ class User(AbstractUser, BaseModel):
         help_text='Designates whether this user can manage all restaurants'
     )
 
-    # Django auth settings
-    EMAIL_FIELD = 'email'
+    objects = CustomUserManager()
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
@@ -79,20 +96,9 @@ class User(AbstractUser, BaseModel):
         return f'{self.first_name} {self.last_name}'
 
     def save(self, *args, **kwargs):
-        # Ensure superadmin doesn't have restaurant code or restaurant
         if self.is_superadmin:
             self.restaurant_code = None
             self.restaurant = None
-
-        # Ensure restaurant_code matches restaurant's code if restaurant is set
-        if self.restaurant and not self.restaurant_code:
-            self.restaurant_code = self.restaurant.restaurant_code
-
-        # Validate restaurant code matches restaurant if both are set
-        if self.restaurant and self.restaurant_code:
-            if self.restaurant.restaurant_code != self.restaurant_code:
-                raise ValidationError("Restaurant code must match the assigned restaurant's code")
-
         super().save(*args, **kwargs)
 
 # Update related_name to avoid clashes
