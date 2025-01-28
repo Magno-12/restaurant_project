@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+import dj_database_url
 
 from decouple import config
 
@@ -116,10 +117,11 @@ WSGI_APPLICATION = 'restaurant_project.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        # Replace this value with your local database's connection string.
+        default='postgres://postgres.vbidnefrthbhxkngnmrz:5C3nxg:n7bp3Y2K@aws-0-us-west-1.pooler.supabase.com:5432/postgres',
+        conn_max_age=600
+    )
 }
 
 
