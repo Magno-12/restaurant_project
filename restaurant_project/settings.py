@@ -14,11 +14,14 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import dj_database_url
+from dotenv import load_dotenv
 
 from decouple import config
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -117,11 +120,14 @@ WSGI_APPLICATION = 'restaurant_project.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        # Replace this value with your local database's connection string.
-        default='postgres://postgres.vbidnefrthbhxkngnmrz:5C3nxg:n7bp3Y2K@aws-0-us-west-1.pooler.supabase.com:5432/postgres',
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': 'aws-0-us-west-1.pooler.supabase.com',
+        'NAME': 'postgres',
+        'USER': 'postgres.vbidnefrthbhxkngnmrz',
+        'PASSWORD': 'g9TzErBzMqKSJMoj',
+        'PORT': 6543,
+    }
 }
 
 

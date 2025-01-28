@@ -3,7 +3,7 @@ from django.contrib import admin
 from apps.management.models.dish import Dish
 from apps.management.models.employee import Employee
 from apps.management.models.restaurant import Restaurant
-from apps.management.models.order import Order
+from apps.management.models.order import Order, OrderItem
 from apps.management.models.suplier import Supplier
 from apps.management.models.table import Table
 from apps.management.models.table_service import TableService
@@ -161,13 +161,64 @@ class DishIngredientAdmin(admin.ModelAdmin):
     )
 
 
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 1
+    readonly_fields = ('unit_price',)
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    icon_name = 'reorder'
-    list_display = ('id', 'table', 'order_date_time', 'order_status', 'total_amount', 'payment_method')
-    list_filter = ('order_status', 'payment_method')
-    search_fields = ('table__id',)
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    icon_name = 'receipt'
+    inlines = [OrderItemInline]
+    list_display = ('id', 'table', 'server', 'status', 'order_time', 'get_total', 'payment_status')
+    list_filter = ('status', 'payment_status', 'table__restaurant')
+    search_fields = ('id', 'table__table_number', 'server__first_name', 'server__last_name')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'subtotal', 'tax', 'total', 'completed_time')
+
+    fieldsets = (
+        ('Order Information', {
+            'fields': (
+                'table',
+                'server',
+                'number_of_guests',
+                'status',
+            )
+        }),
+        ('Payment Details', {
+            'fields': (
+                'payment_status',
+                'payment_method',
+                'subtotal',
+                'tax',
+                'tip',
+                'total',
+            )
+        }),
+        ('Additional Information', {
+            'fields': (
+                'notes',
+                'completed_time',
+            )
+        }),
+    )
+
+    def get_total(self, obj):
+        return format_html('${:.2f}', obj.total)
+    get_total.short_description = 'Total'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superadmin:
+            return qs.filter(table__restaurant=request.user.restaurant)
+        return qs
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if not request.user.is_superadmin:
+            if db_field.name == "table":
+                kwargs["queryset"] = Table.objects.filter(restaurant=request.user.restaurant)
+            elif db_field.name == "server":
+                kwargs["queryset"] = request.user.restaurant.users.filter(is_active=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(Supplier)
@@ -181,35 +232,54 @@ class SupplierAdmin(admin.ModelAdmin):
 
 @admin.register(Table)
 class TableAdmin(admin.ModelAdmin):
-    icon_name = 'tab'
-    list_display = ('id', 'restaurant', 'capacity', 'location', 'is_available', 'reservation_required')
-    list_filter = ('restaurant', 'is_available', 'reservation_required')
-    search_fields = ('location',)
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    icon_name = 'table_chart'
+    list_display = ('id', 'table_number', 'restaurant', 'status', 'capacity', 'get_current_server')
+    list_filter = ('restaurant', 'status', 'is_active')
+    search_fields = ('table_number', 'restaurant__name')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'status_changed_at', 'occupied_since')
 
     fieldsets = (
         ('Table Information', {
             'fields': (
+                'table_number',
                 'restaurant',
                 'capacity',
                 'location',
-                'is_available',
-                'reservation_required'
             )
         }),
         ('Status', {
             'fields': (
+                'status',
+                'current_server',
                 'is_active',
+                'status_changed_at',
+                'occupied_since'
             )
         }),
-        ('Important Dates', {
+        ('Settings', {
             'fields': (
-                'created_at',
-                'updated_at',
+                'reservation_required',
             )
         }),
     )
 
+    def get_current_server(self, obj):
+        if obj.current_server:
+            return f"{obj.current_server.first_name} {obj.current_server.last_name}"
+        return "-"
+    get_current_server.short_description = 'Current Server'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superadmin:
+            return qs.filter(restaurant=request.user.restaurant)
+        return qs
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if not request.user.is_superadmin:
+            if db_field.name == "current_server":
+                kwargs["queryset"] = request.user.restaurant.users.filter(is_active=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 @admin.register(TableService)
 class TableServiceAdmin(admin.ModelAdmin):
